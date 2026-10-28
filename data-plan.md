@@ -4,19 +4,11 @@ Niklas Etling Nikita Toporkov Eemeli Vartio
 
 
 ## Sensor
-    Humidity
-    Temperature
-    HCHO
-    CO
-    CH4
     VOC
     NH3
     H2S
     ETOH
-    SMOKE
     ODOR
-    H2
-    NO2
 
 ## Classes
     Pure air of testing environment
@@ -35,7 +27,3 @@ Niklas Etling Nikita Toporkov Eemeli Vartio
 ## Risk
 
     Classes with common compounds could trigger the wrong sensors adding noise to measurements
-
-## Waiting for
-
-sensors
