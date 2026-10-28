@@ -1,2 +1,0 @@
-## Sniff32 Class Project Esp32 threat Assessment
-**Asset:** [Identify the data, systems, and services that need protection.] **Threat:** [Describe who or what could compromise those assets, the likely attack or failure, and its potential impact.] **Response:** [List the safeguards, monitoring, and recovery steps that reduce the risk and address an incident.]
