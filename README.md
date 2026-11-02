@@ -9,7 +9,7 @@
 
 ## Project Scope
 The goal of this project is to sample real-world gas emissions from various items throughout their lifecycle (e.g., a rotting apple) and train an Edge Impulse model to run locally on the ESP32-S3 for real-time scent classification.
-
+ 
 ## Team
 * Niklas Etling
 * Nikita Toporkov
