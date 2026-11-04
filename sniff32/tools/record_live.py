@@ -64,7 +64,6 @@ def capture_and_plot(port, output, seconds, countdown=3, startup_timeout=8):
     deadline = time.monotonic() + startup_timeout
     last_text = ''
     
-    # Wait for valid serial data to start
     while time.monotonic() < deadline:
         raw = None
         try:
@@ -77,7 +76,6 @@ def capture_and_plot(port, output, seconds, countdown=3, startup_timeout=8):
     else:
         raise ValueError('No valid readings. Check connection and baud rate.')
 
-    # Countdown
     for remaining in range(countdown, 0, -1):
         print(f'Get ready: {remaining}...', flush=True)
         deadline = time.monotonic() + 1
@@ -90,8 +88,7 @@ def capture_and_plot(port, output, seconds, countdown=3, startup_timeout=8):
             if time.monotonic() >= deadline:
                 raise ValueError('Serial stream stopped before recording.')
 
-    # Setup Live Plotting
-    plt.ion() # Enable interactive mode
+    plt.ion() 
     fig, ax = plt.subplots()
     fig.canvas.manager.set_window_title(output.name if output else "Live Plot (No Recording)")
     ax.set_title("Live Sensor Data")
@@ -110,6 +107,7 @@ def capture_and_plot(port, output, seconds, countdown=3, startup_timeout=8):
     columns = [[] for _ in SENSOR_LABELS]
     time_data = []
     count = 0
+    plot_active = True
 
     target = None
     if output is not None:
@@ -117,7 +115,9 @@ def capture_and_plot(port, output, seconds, countdown=3, startup_timeout=8):
 
     try:
         action_word = "Plotting" if output is None else "Recording"
-        print(f'GO! {action_word} for {seconds:g} seconds.', flush=True)
+        duration_str = "indefinitely (press Ctrl+C to stop)" if math.isinf(seconds) else f"for {seconds:g} seconds"
+        print(f'GO! {action_word} {duration_str}.', flush=True)
+        
         start = last_row = time.monotonic()
         
         while time.monotonic() - start < seconds:
@@ -128,7 +128,6 @@ def capture_and_plot(port, output, seconds, countdown=3, startup_timeout=8):
                 if target:
                     target.write(csv_str)
                 
-                # Store data for plotting
                 current_time = count / SAMPLE_RATE_HZ
                 time_data.append(current_time)
                 for col_list, val in zip(columns, values):
@@ -137,20 +136,42 @@ def capture_and_plot(port, output, seconds, countdown=3, startup_timeout=8):
                 count += 1
                 last_row = time.monotonic()
                 
-                # Update plot periodically (every 10 samples to prevent UI lag)
-                if count % 10 == 0:
-                    for line, col_data in zip(plot_lines, columns):
-                        line.set_data(time_data, col_data)
-                    ax.relim()
-                    ax.autoscale_view()
-                    plt.pause(0.001)
+                # Update plot periodically (every 10 samples)
+                if count % 10 == 0 and plot_active:
+                    # Check if user closed the window manually
+                    if not plt.fignum_exists(fig.number):
+                        plot_active = False
+                        print("\nPlot window closed. Continuing to record in background... (Press Ctrl+C to stop)", flush=True)
+                    else:
+                        # Memory management: actively trim lists if running indefinitely
+                        if math.isinf(seconds) and len(time_data) > 2000:
+                            time_data = time_data[-1000:]
+                            for i in range(len(columns)):
+                                columns[i] = columns[i][-1000:]
 
-            if time.monotonic() - last_row > 1:
-                raise ValueError('No complete readings for one second; check the connection.')
+                        for line, col_data in zip(plot_lines, columns):
+                            line.set_data(time_data, col_data)
+                        
+                        ax.relim()
+                        ax.autoscale_view()
+                        
+                        try:
+                            plt.pause(0.001)
+                        except Exception:
+                            pass # Ignore thread errors if killed mid-draw
+                        
+                        # Reset timeout so moving the window doesn't trigger a false serial dropout
+                        last_row = time.monotonic()
+
+            # Increased timeout to 3 seconds to be highly tolerant of OS GUI freezes
+            if time.monotonic() - last_row > 3.0:
+                raise ValueError('No complete readings for 3 seconds; check the connection.')
         
         if count < 2:
             raise ValueError('Fewer than two readings received.')
             
+    except KeyboardInterrupt:
+        print('\nStopped by user. Finishing up...', flush=True)
     except BaseException:
         if target:
             target.close()
@@ -166,18 +187,21 @@ def capture_and_plot(port, output, seconds, countdown=3, startup_timeout=8):
     else:
         print(f'STOP. Plotted {count} rows (no file saved).')
     
-    # Finalize plot to keep it open after recording finishes
-    plt.ioff() 
-    for line, col_data in zip(plot_lines, columns):
-        line.set_data(time_data, col_data)
-    ax.relim()
-    ax.autoscale_view()
-    plt.show() # Blocks until the user closes the window
+    # Finalize plot if it's still open
+    if plot_active and plt.fignum_exists(fig.number):
+        plt.ioff() 
+        for line, col_data in zip(plot_lines, columns):
+            line.set_data(time_data, col_data)
+        ax.relim()
+        ax.autoscale_view()
+        plt.show() 
+        
     return count
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('output', nargs='?', type=Path, help='new filename, e.g. handsanitizer1.csv')
+    parser.add_argument('-c', '--continuous', action='store_true', help='record/plot indefinitely until Ctrl+C is pressed')
     parser.add_argument('--plot-only', action='store_true', help='plot live data without saving to CSV')
     parser.add_argument('--port', help='serial port')
     parser.add_argument('--list-ports', action='store_true', help='list ports without opening them')
@@ -185,8 +209,11 @@ def main(argv=None):
     parser.add_argument('--baud', type=int, default=115200, help='baud rate (default: 115200)')
     args = parser.parse_args(argv)
     
-    if not math.isfinite(args.seconds) or args.seconds <= 0 or args.baud <= 0:
-        parser.error('seconds and baud must be positive, finite numbers')
+    if args.continuous:
+        args.seconds = math.inf
+        
+    if not math.isfinite(args.seconds) and not args.continuous or args.seconds <= 0 or args.baud <= 0:
+        parser.error('seconds and baud must be positive numbers')
     if not args.list_ports and not args.plot_only and args.output is None:
         parser.error('provide an output filename or use --plot-only')
         

@@ -49,11 +49,14 @@ python tools/record_live.py --list-ports
 python tools/record_live.py my_test.csv --seconds 30 --port COM3
 ```
 
-**Plot only:**
+**Live Plot only:**
 ```bash
-python tools/record_live.py --plot-only
+python tools/record_live.py --plot-only --continuous
 ```
-It still plots for a specified time default is 10 seconds
 
+**Plot csv:**
+```bash
+python tools/plot.py handsanitizer1.csv
+```
 
 *Note: The script plots every 10th sample to keep the live graph smooth, but every single reading (50Hz) is safely logged to your CSV file without data loss.*
