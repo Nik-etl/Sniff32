@@ -17,9 +17,9 @@ Class 1 - Citrus (High VOC): Smashed orange or lemon peel.
 
 Class 2 - Allium (High H2S/Odor): Crushed garlic or onion.
 
-Class 3 - Aged Protein (High NH3): Blue cheese or deli meat.
+Class 3 - Aged Protein (NH3): Blue cheese and/or deli meat.
 
-Class 4 - Transient Gas / Fart: Captured gas or novelty fart spray in a sealed ziplock bag to guarantee repeatable concentration.
+Class 4 - Hand Sanitizer (Alcohol/Solvent) (ETOH, VOC, and ODOR)
 
 ## Collection
 ## Data Collection Protocol (Concentrated Method)
