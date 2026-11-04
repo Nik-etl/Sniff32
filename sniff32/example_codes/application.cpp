@@ -10,6 +10,8 @@
  * The sample order matches the headerless CSV files:
  * VOC, NH3, H2S, EtOH, Odor.
  */
+
+ // If not in lib add these libraries to the project, these can be found from ArduinoIDE library manager
 #include <Arduino.h>
 #include <Wire.h>
 #include <Adafruit_GFX.h>
