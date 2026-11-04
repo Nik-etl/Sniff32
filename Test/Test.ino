@@ -35,11 +35,11 @@ void loop() {
   int valOdor = analogRead(pinOdor);
 
   // Convert raw values to Voltage (assuming 3.3V reference)
-  float voltVOC  = (valVOC / 4095.0) * 3.3;
-  float voltNH3  = (valNH3 / 4095.0) * 3.3;
-  float voltH2S  = (valH2S / 4095.0) * 3.3;
-  float voltEtOH = (valEtOH / 4095.0) * 3.3;
-  float voltOdor = (valOdor / 4095.0) * 3.3;
+  float voltVOC  = (valVOC / 4095.0);
+  float voltNH3  = (valNH3 / 4095.0);
+  float voltH2S  = (valH2S / 4095.0);
+  float voltEtOH = (valEtOH / 4095.0);
+  float voltOdor = (valOdor / 4095.0);
 
   // Print voltages to the Serial Monitor (formatted for Serial Plotter)
   Serial.print("VOC_V:"); Serial.print(voltVOC); Serial.print(", ");
