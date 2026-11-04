@@ -10,16 +10,16 @@ Niklas Etling Nikita Toporkov Eemeli Vartio
     ETOH
     ODOR
 
-## Classes
+## Classes - classes will start with simple objects (Orange, hand sanitizer, garlic, etc.) and will be modified as needed... (Food, rotten/spoiled, other, etc.)
 Baseline: Pure classroom air (ambient environment).
 
 Class 1 - Citrus (High VOC): Smashed orange or lemon peel.
 
 Class 2 - Allium (High H2S/Odor): Crushed garlic or onion.
 
-Class 3 - Aged Protein (High NH3): Blue cheese or deli meat.
+Class 3 - Aged Protein (NH3): Blue cheese and/or deli meat.
 
-Class 4 - Transient Gas / Fart: Captured gas or novelty fart spray in a sealed ziplock bag to guarantee repeatable concentration.
+Class 4 - Hand Sanitizer (Alcohol/Solvent) (ETOH, VOC, and ODOR)
 
 ## Collection
 ## Data Collection Protocol (Concentrated Method)
@@ -42,7 +42,8 @@ Training Data: 80% of collected samples.
 
 Testing/Validation Data: 20% of collected samples, measured in the exact same environment and identical conditions to verify model accuracy.
 
-## Risk
-    - Sensor heat drift skewing baseline values.
-    - Classes with common compounds could trigger the wrong sensors adding noise to measurements
-    - Gas dilution resulting in flat data.
+## Risk 
+ - Unaccounted for venting and airflow of testing environment (**Highest Risk**)
+ - Classes with common compounds could trigger the wrong sensors adding noise to measurements
+ - Sensor heat drift skewing baseline values.
+ - Gas dilution resulting in flat data.
