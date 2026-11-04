@@ -8,13 +8,13 @@ import time
 
 
 def csv_row(raw):
-    """Require one complete, finite three-number row; preserve sensor precision."""
+    """Require one complete, finite five-number row; preserve sensor precision."""
     try:
         values = raw.decode('ascii').strip().split(',')
-        if len(values) != 3 or not all(math.isfinite(float(v)) for v in values):
+        if len(values) != 5 or not all(math.isfinite(int(v)) for v in values):
             raise ValueError
     except (UnicodeError, ValueError):
-        raise ValueError('expected three finite numbers (x,y,z)') from None
+        raise ValueError('expected five finite numbers (x,y,z,ax,ay,az)') from None
     return ','.join(v.strip() for v in values) + '\n'
 
 

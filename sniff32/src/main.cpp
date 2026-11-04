@@ -38,18 +38,25 @@ void loop() {
   int valOdor = analogRead(pinOdor);
 
   // Convert raw values to Voltage (assuming 3.3V reference)
-  float voltVOC  = (valVOC / 4095.0);
-  float voltNH3  = (valNH3 / 4095.0);
-  float voltH2S  = (valH2S / 4095.0);
-  float voltEtOH = (valEtOH / 4095.0);
-  float voltOdor = (valOdor / 4095.0);
+  float voltVOC  = (valVOC / 4095.0) * 3.3;
+  float voltNH3  = (valNH3 / 4095.0) * 3.3;
+  float voltH2S  = (valH2S / 4095.0) * 3.3;
+  float voltEtOH = (valEtOH / 4095.0) * 3.3;
+  float voltOdor = (valOdor / 4095.0) * 3.3;
+
 
   // Print voltages to the Serial Monitor (formatted for Serial Plotter)
-  Serial.print("VOC_V:"); Serial.print(voltVOC); Serial.print(", ");
-  Serial.print("NH3_V:"); Serial.print(voltNH3); Serial.print(", ");
-  Serial.print("H2S_V:"); Serial.print(voltH2S); Serial.print(", ");
-  Serial.print("EtOH_V:"); Serial.print(voltEtOH); Serial.print(", ");
-  Serial.print("Odor_V:"); Serial.println(voltOdor);
+  // Serial.print("VOC_V:"); Serial.print(voltVOC); Serial.print(", ");
+  //Serial.print("NH3_V:"); Serial.print(voltNH3); Serial.print(", ");
+  //Serial.print("H2S_V:"); Serial.print(voltH2S); Serial.print(", ");
+  //Serial.print("EtOH_V:"); Serial.print(voltEtOH); Serial.print(", ");
+  //Serial.print("Odor_V:"); Serial.println(voltOdor);
+  // Print voltages to the Serial Monitor (formatted for Serial Plotter)
+  Serial.print(valVOC); Serial.print(","); //VOC
+  Serial.print(valNH3); Serial.print(","); //NH3
+  Serial.print(valH2S); Serial.print(","); //H2S
+  Serial.print(valEtOH); Serial.print(","); //EtOH
+  Serial.println(valOdor); //Odor
 
-  delay(500); // Read twice a second
+  delay(20); // // 20Hz
 }
