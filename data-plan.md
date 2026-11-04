@@ -42,8 +42,8 @@ Training Data: 80% of collected samples.
 
 Testing/Validation Data: 20% of collected samples, measured in the exact same environment and identical conditions to verify model accuracy.
 
-## Risk (in order of effect on data collection)
- - Unaccounted for venting and airflow of testing environment
- - Sensor heat drift skewing baseline values.
+## Risk 
+ - Unaccounted for venting and airflow of testing environment (**Highest Risk**)
  - Classes with common compounds could trigger the wrong sensors adding noise to measurements
+ - Sensor heat drift skewing baseline values.
  - Gas dilution resulting in flat data.
