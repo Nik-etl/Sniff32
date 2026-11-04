@@ -58,5 +58,5 @@ void loop() {
   Serial.print(valEtOH); Serial.print(","); //EtOH
   Serial.println(valOdor); //Odor
 
-  delay(20); // // 20Hz
+  delay(20); // 50Hz
 }
