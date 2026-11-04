@@ -10,7 +10,7 @@ Niklas Etling Nikita Toporkov Eemeli Vartio
     ETOH
     ODOR
 
-## Classes
+## Classes - classes will start with simple objects (Orange, hand sanitizer, garlic, etc.) and will be modified as needed... (Food, rotten/spoiled, other, etc.)
 Baseline: Pure classroom air (ambient environment).
 
 Class 1 - Citrus (High VOC): Smashed orange or lemon peel.
