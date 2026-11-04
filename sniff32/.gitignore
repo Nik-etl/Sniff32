@@ -3,5 +3,9 @@
 .vscode/c_cpp_properties.json
 .vscode/launch.json
 .vscode/ipch
+<<<<<<< HEAD
 
 /lib
+=======
+data/*
+>>>>>>> f49ab67ce086c111400b90e18f1c6ab68a9864cf
