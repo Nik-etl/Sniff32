@@ -1,17 +1,22 @@
 #!/usr/bin/env python3
 """Record 5-column sensor data from serial to CSV and plot it live."""
 import argparse
+from collections import deque
 import math
 from pathlib import Path
 import sys
+import threading
 import time
 
 import matplotlib
-matplotlib.use('Qt5Agg') # Force an interactive window backend (PyQt5)
+matplotlib.use('Qt5Agg')
 import matplotlib.pyplot as plt
+from matplotlib.animation import FuncAnimation
 
 SENSOR_LABELS = ("VOC", "NH3", "H2S", "EtOH", "Odor")
 SAMPLE_RATE_HZ = 50
+MAX_PLOT_POINTS = 1000  # Rolling 20-second window for smooth UI performance
+
 
 def parse_row(raw):
     """Require one complete, finite five-number row and return as floats."""
@@ -25,9 +30,9 @@ def parse_row(raw):
     except (UnicodeError, ValueError):
         raise ValueError('expected five finite numbers') from None
     
-    # Return both the raw CSV string and the parsed floats for plotting
     csv_string = ','.join(v.strip() for v in values_str) + '\n'
     return csv_string, values
+
 
 class Lines:
     """Keep partial reads across timeouts, with a bound on unframed input."""
@@ -45,6 +50,7 @@ class Lines:
         raw, self.pending = self.pending, b''
         return raw
 
+
 def choose_port(ports, requested):
     if requested:
         return requested
@@ -54,8 +60,9 @@ def choose_port(ports, requested):
     raise ValueError('Cannot choose one USB serial port. Run --list-ports, then add '
                      '--port COM3 (Windows) or --port /dev/cu.usbserial-... (Mac).')
 
+
 def capture_and_plot(port, output, seconds, countdown=3, startup_timeout=8):
-    """Record data to CSV (if output provided) while updating a live Matplotlib plot."""
+    """Record data on a background thread while the main thread runs the GUI smoothly."""
     if output is not None and output.exists():
         raise ValueError(f'{output} already exists. Use a new take number; nothing overwritten.')
     
@@ -88,7 +95,53 @@ def capture_and_plot(port, output, seconds, countdown=3, startup_timeout=8):
             if time.monotonic() >= deadline:
                 raise ValueError('Serial stream stopped before recording.')
 
-    plt.ion() 
+    # Shared state between serial worker thread and GUI main thread
+    lock = threading.Lock()
+    # If continuous, cap memory with maxlen; otherwise keep full take for final view
+    maxlen = MAX_PLOT_POINTS if math.isinf(seconds) else None
+    time_data = deque(maxlen=maxlen)
+    columns = [deque(maxlen=maxlen) for _ in SENSOR_LABELS]
+    
+    state = {
+        'count': 0,
+        'done': False,
+        'error': None,
+        'stop_requested': False
+    }
+
+    target = output.open('x', encoding='utf-8', newline='\n') if output is not None else None
+
+    def serial_worker():
+        """Background thread: reads serial and writes CSV without GUI interruptions."""
+        try:
+            start = last_row = time.monotonic()
+            while not state['stop_requested'] and (time.monotonic() - start < seconds):
+                raw = lines.read()
+                if raw is not None:
+                    csv_str, values = parse_row(raw)
+                    if target:
+                        target.write(csv_str)
+                    
+                    with lock:
+                        current_time = state['count'] / SAMPLE_RATE_HZ
+                        time_data.append(current_time)
+                        for col_deque, val in zip(columns, values):
+                            col_deque.append(val)
+                        state['count'] += 1
+                    
+                    last_row = time.monotonic()
+
+                if time.monotonic() - last_row > 2.0:
+                    raise ValueError('No complete readings for 2 seconds; check the connection.')
+            
+            if state['count'] < 2 and not state['stop_requested']:
+                raise ValueError('Fewer than two readings received.')
+        except BaseException as exc:
+            state['error'] = exc
+        finally:
+            state['done'] = True
+
+    # Setup Plot Window
     fig, ax = plt.subplots()
     fig.canvas.manager.set_window_title(output.name if output else "Live Plot (No Recording)")
     ax.set_title("Live Sensor Data")
@@ -96,112 +149,79 @@ def capture_and_plot(port, output, seconds, countdown=3, startup_timeout=8):
     ax.set_ylabel("ADC value")
     ax.grid(True)
     
-    plot_lines = []
-    for label in SENSOR_LABELS:
-        line, = ax.plot([], [], label=label)
-        plot_lines.append(line)
-    ax.legend()
+    plot_lines = [ax.plot([], [], label=label)[0] for label in SENSOR_LABELS]
+    ax.legend(loc="upper left")
     plt.tight_layout()
-    plt.show(block=False)
 
-    columns = [[] for _ in SENSOR_LABELS]
-    time_data = []
-    count = 0
-    plot_active = True
+    def update_plot(frame):
+        """Called every 50ms by the Qt GUI timer to redraw the graph."""
+        with lock:
+            if not time_data:
+                return plot_lines
+            t_list = list(time_data)
+            c_lists = [list(c) for c in columns]
 
-    target = None
-    if output is not None:
-        target = output.open('x', encoding='utf-8', newline='\n')
-
-    try:
-        action_word = "Plotting" if output is None else "Recording"
-        duration_str = "indefinitely (press Ctrl+C to stop)" if math.isinf(seconds) else f"for {seconds:g} seconds"
-        print(f'GO! {action_word} {duration_str}.', flush=True)
+        for line, col_data in zip(plot_lines, c_lists):
+            line.set_data(t_list, col_data)
         
-        start = last_row = time.monotonic()
-        
-        while time.monotonic() - start < seconds:
-            raw = lines.read()
-            if raw is not None:
-                csv_str, values = parse_row(raw)
-                
-                if target:
-                    target.write(csv_str)
-                
-                current_time = count / SAMPLE_RATE_HZ
-                time_data.append(current_time)
-                for col_list, val in zip(columns, values):
-                    col_list.append(val)
-                
-                count += 1
-                last_row = time.monotonic()
-                
-                # Update plot periodically (every 10 samples)
-                if count % 10 == 0 and plot_active:
-                    # Check if user closed the window manually
-                    if not plt.fignum_exists(fig.number):
-                        plot_active = False
-                        print("\nPlot window closed. Continuing to record in background... (Press Ctrl+C to stop)", flush=True)
-                    else:
-                        # Memory management: actively trim lists if running indefinitely
-                        if math.isinf(seconds) and len(time_data) > 2000:
-                            time_data = time_data[-1000:]
-                            for i in range(len(columns)):
-                                columns[i] = columns[i][-1000:]
-
-                        for line, col_data in zip(plot_lines, columns):
-                            line.set_data(time_data, col_data)
-                        
-                        ax.relim()
-                        ax.autoscale_view()
-                        
-                        try:
-                            plt.pause(0.001)
-                        except Exception:
-                            pass # Ignore thread errors if killed mid-draw
-                        
-                        # Reset timeout so moving the window doesn't trigger a false serial dropout
-                        last_row = time.monotonic()
-
-            # Increased timeout to 3 seconds to be highly tolerant of OS GUI freezes
-            if time.monotonic() - last_row > 3.0:
-                raise ValueError('No complete readings for 3 seconds; check the connection.')
-        
-        if count < 2:
-            raise ValueError('Fewer than two readings received.')
-            
-    except KeyboardInterrupt:
-        print('\nStopped by user. Finishing up...', flush=True)
-    except BaseException:
-        if target:
-            target.close()
-            output.unlink()
-            print('Take failed or interrupted; incomplete CSV removed.', file=sys.stderr)
-        raise
-    finally:
-        if target:
-            target.close()
-        
-    if output:
-        print(f'STOP. Saved {count} rows to {output}.')
-    else:
-        print(f'STOP. Plotted {count} rows (no file saved).')
-    
-    # Finalize plot if it's still open
-    if plot_active and plt.fignum_exists(fig.number):
-        plt.ioff() 
-        for line, col_data in zip(plot_lines, columns):
-            line.set_data(time_data, col_data)
         ax.relim()
         ax.autoscale_view()
-        plt.show() 
-        
-    return count
+
+        if state['done']:
+            ani.event_source.stop()
+            if state['error'] is not None:
+                plt.close(fig)  # Close window immediately on error
+            else:
+                ax.set_title(f"Finished ({state['count']} samples) - Close window to exit")
+                fig.canvas.draw_idle()
+
+        return plot_lines
+
+    action_word = "Plotting" if output is None else "Recording"
+    if math.isinf(seconds):
+        duration_str = "indefinitely (close the plot window or press Ctrl+C to stop)"
+    else:
+        duration_str = f"for {seconds:g} seconds"
+    print(f'GO! {action_word} {duration_str}.', flush=True)
+
+    # Start the background serial reader
+    worker = threading.Thread(target=serial_worker, daemon=True)
+    worker.start()
+
+    # Run the GUI update timer at 20 FPS (50ms interval)
+    ani = FuncAnimation(fig, update_plot, interval=50, blit=False, cache_frame_data=False)
+
+    try:
+        # plt.show() runs the native Qt event loop, keeping the window 100% responsive
+        plt.show()
+    except KeyboardInterrupt:
+        print('\nStopped by user.', flush=True)
+    finally:
+        # Signal thread to stop when the user closes the window or hits Ctrl+C
+        state['stop_requested'] = True
+        worker.join(timeout=2.0)
+        if target:
+            target.close()
+
+    # If the background thread crashed, clean up the incomplete file
+    if state['error'] is not None:
+        if output is not None and output.exists():
+            output.unlink()
+            print('Take failed or interrupted; incomplete CSV removed.', file=sys.stderr)
+        raise state['error']
+
+    if output:
+        print(f"STOP. Saved {state['count']} rows to {output}.")
+    else:
+        print(f"STOP. Plotted {state['count']} rows (no file saved).")
+
+    return state['count']
+
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('output', nargs='?', type=Path, help='new filename, e.g. handsanitizer1.csv')
-    parser.add_argument('-c', '--continuous', action='store_true', help='record/plot indefinitely until Ctrl+C is pressed')
+    parser.add_argument('-c', '--continuous', action='store_true', help='record/plot indefinitely until window is closed')
     parser.add_argument('--plot-only', action='store_true', help='plot live data without saving to CSV')
     parser.add_argument('--port', help='serial port')
     parser.add_argument('--list-ports', action='store_true', help='list ports without opening them')
@@ -212,17 +232,16 @@ def main(argv=None):
     if args.continuous:
         args.seconds = math.inf
         
-    if not math.isfinite(args.seconds) and not args.continuous or args.seconds <= 0 or args.baud <= 0:
+    if (not math.isfinite(args.seconds) and not args.continuous) or args.seconds <= 0 or args.baud <= 0:
         parser.error('seconds and baud must be positive numbers')
     if not args.list_ports and not args.plot_only and args.output is None:
         parser.error('provide an output filename or use --plot-only')
         
     if args.output and not args.plot_only:
-        # Force the file into a 'data' folder and create it if missing
         args.output = Path('data') / args.output.name
         args.output.parent.mkdir(parents=True, exist_ok=True)
     elif args.plot_only:
-        args.output = None # Ensure output is explicitly None if plotting only
+        args.output = None
         
     try:
         import serial
