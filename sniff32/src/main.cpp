@@ -1,16 +1,4 @@
-/*
- * ESP32-S3 - DFRobot Fermion MEMS Gas Sensors Test
- * 
- * Sensors:
- * SEN0566 - VOC 
- * SEN0567 - NH3 (Ammonia)
- * SEN0568 - H2S (Hydrogen Sulfide)
- * SEN0569 - EtOH (Ethanol)
- * SEN0571 - Odor
- */
-
-// Define the ESP32-S3 ADC pins connected to the sensors
-// Using ADC1 pins (GPIO 1 to 10 are safe for ADC on ESP32-S3)
+// Keep these includes in src so PlatformIO's dependency scanner finds them.
 #include <Arduino.h>
 
 
