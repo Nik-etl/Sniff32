@@ -57,7 +57,7 @@ python tools/record_live.py my_test.csv --seconds 30 --port COM3
 To view a CSV you previously recorded, use the plotting script. It automatically looks in your current directory and the `data/` folder.
 
 ```bash
-python tools/plot.py handsanitizer1.csv
+python tools/plot_csv.py handsanitizer1.csv
 ```
 This opens an interactive window where you can zoom, pan, and inspect the 5 sensor columns.
 
