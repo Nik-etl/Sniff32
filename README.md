@@ -14,3 +14,6 @@ The goal of this project is to sample real-world gas emissions from various item
 * Niklas Etling
 * Nikita Toporkov
 * Eemeli Vartio
+
+## Platform decision
+* We use ESP32, because its computation power and memory handle our analog sensor outputs with ease, there is no need for a big ML model. Power consumption is low and MCU keeps it readily and quickly available. 
