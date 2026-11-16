@@ -255,6 +255,12 @@ void classifyMeasurement() {
   enterState(AppState::ShowingResult);
 }
 
+// Same headerless CSV line as record.cpp: VOC,NH3,H2S,EtOH,Odor (smoothed ADC).
+void printSensorRow() {
+  Serial.printf("%d,%d,%d,%d,%d\n", smoothed[0], smoothed[1], smoothed[2],
+                smoothed[3], smoothed[4]);
+}
+
 // Called once per 20 ms sample, after the filter has been updated.
 void onSample() {
   switch (appState) {
@@ -314,6 +320,8 @@ void loop() {
     if (now - lastSampleAt >= SAMPLE_INTERVAL_MS) lastSampleAt = now;  // resync after stalls
     updateFilter();
     onSample();
+    // Stream live values between measurements; keep quiet while capturing.
+    if (appState != AppState::Measuring) printSensorRow();
   }
 
   switch (appState) {
