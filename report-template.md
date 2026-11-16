@@ -82,7 +82,7 @@ We had to burn the sensors again twice, first time because we did not notice tin
 
 ## AI use
 
-> AI was used in the planning of what sensors to use and what substances emit which gasses, programming tasks, spellcheking and sentence structure.
+AI was used in the planning of what sensors to use and what substances emit which gasses, programming tasks, spellcheking and sentence structure.
 
 > Required. A few sentences: what you used it for, and where. Reporting never
 > costs marks; not reporting is fraud.
