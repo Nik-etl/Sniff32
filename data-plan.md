@@ -32,9 +32,13 @@
 5.  **Reset:** Remove the funnel/cup, fan the sensors back to baseline, and repeat.
 
 ## Data Processing & ML Features
-*   **Uniform Cropping:** In Edge Impulse, the 10-15 second raw CSV recordings will be cropped to uniform 1-to-2-second data windows containing only the stable peak. The dissipation (decay) phase will be excluded to prevent confusion with baseline air.
-*   **DSP Block:** The **Flatten** block will extract 4 statistical features (Average, Min, Max, RMS) per sensor, generating a 20-feature array for the ML model.
-*   **Machine Learning Model:** Start with a Classical Machine Learning model (Random Forest) for fast training on small datasets, using the EON Tuner to optimize parameters.
+*   **Sliding Window:** The 15-second raw CSV recordings are processed using a **2000 ms window size** and a **500 ms window increase**. The initial "ramp-up" phase of the gas is manually cropped out of the samples to prevent baseline confusion.
+*   **DSP Block:** The **Flatten** block extracts 3 targeted statistical features per sensor: **Average** (peak height), **Standard Deviation** (signal bounce), and **Skewness** (signal curve). This generates a 15-feature array that captures both intensity and gas "texture," eliminating redundant noise.
+*   **Normalization (Room Variance Compensation):** Scaling is kept at `1` in the Flatten block to preserve the physical mathematical distance between room noise and gas peaks. Z-score normalization ("Standardize features") is applied directly within the Classifier. This mathematically balances minor sensor spikes against massive spikes, while specifically making up for the natural variance and baseline drift of the ambient room environment.
+*   **Machine Learning Model:** A lightweight **Neural Network (Keras)** optimized for the ESP32-S3:
+    *   **Architecture:** Input -> Dense (20) -> Dropout (0.2) -> Dense (10) -> Output (Classes).
+    *   **Dropout:** Added to penalize strict memorization and force the network to generalize.
+    *   **Auto-weighting:** Enabled during training to mathematically balance classes heavily cropped (gas peaks) against uncropped classes (baselines).
 
 ## Dataset Split
 *   **Training Data:** 80% of collected samples.
