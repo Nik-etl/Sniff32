@@ -1,98 +1,233 @@
-// Keep these includes in src so PlatformIO's dependency scanner finds them.
+/*
+ * Combined Sniff32 measurement application, included by src/main.cpp.
+ *
+ * Flow:
+ *   1. Wait for the external button and show "Ready for Sniffing!".
+ *   2. Capture the five sensor values at 50 Hz for the configured duration.
+ *   3. Pass the captured window to the classifier placeholder and show its label.
+ *   4. Keep the result visible for the configured time, then return to ready.
+ *
+ * The sample order matches the headerless CSV files:
+ * VOC, NH3, H2S, EtOH, Odor.
+ */
+
+ // If not in lib add these libraries to the project, these can be found from ArduinoIDE library manager
 #include <Arduino.h>
+#include <Wire.h>
+#include <Adafruit_GFX.h>
+#include <Adafruit_SSD1306.h>
+#include <sniff32_inferencing.h>
 
+namespace {
 
-const int pinVOC   = 4;  // SEN0566 Volatile Organic Compounds
-const int pinNH3   = 5;  // SEN0567 Ammonia
-const int pinH2S   = 6;  // SEN0568 Hydrogen Sulfide
-const int pinEtOH  = 7;  // SEN0569 Ethanol 
-const int pinOdor  = 8;  // SEN0571 Odor and Gas Detection Sensor
+// Sensor pins and column order must match the CSV recording sketch.
+constexpr uint8_t PIN_VOC = 4;
+constexpr uint8_t PIN_NH3 = 5;
+constexpr uint8_t PIN_H2S = 6;
+constexpr uint8_t PIN_ETOH = 7;
+constexpr uint8_t PIN_ODOR = 8;
 
-// Define the number of samples to take per sensor
-const int NUM_SAMPLES = 10;
-const int NUM_SENSORS = 5;
+// Change this to the GPIO used by the external button. Wire the button
+// between this pin and GND; INPUT_PULLUP makes a press read LOW.
+constexpr uint8_t BUTTON_PIN = 2;
+constexpr uint32_t BUTTON_DEBOUNCE_MS = 40;
 
-const int sensorPins[NUM_SENSORS] = {pinVOC, pinNH3, pinH2S, pinEtOH, pinOdor};
+// Existing display wiring used SDA=8 and SCL=9. Move SDA to GPIO 10 because
+// GPIO 8 is also the Odor sensor input; leave SCL on GPIO 9.
+constexpr uint8_t OLED_SDA_PIN = 10;
+constexpr uint8_t OLED_SCL_PIN = 9;
+constexpr uint8_t OLED_ADDRESS = 0x3C;
+constexpr int SCREEN_WIDTH = 128;
+constexpr int SCREEN_HEIGHT = 64;
 
-// 2D array: 5 rows (one for each sensor) and 10 columns (the past readings)
-int readings[NUM_SENSORS][NUM_SAMPLES]; 
+// TODO: Set these after choosing the final measurement duration/model window.
+constexpr uint32_t MEASUREMENT_DURATION_SECONDS = 15;
+constexpr uint32_t RESULT_DISPLAY_SECONDS = 60;
+constexpr uint32_t THRESHOLD = 0.52;
 
-// read pointer
-int readIndex = 0;
+// The sensor sketch samples every 20 ms (approximately 50 Hz).
+constexpr uint32_t SAMPLE_INTERVAL_MS = 20;
+constexpr uint8_t SENSOR_COUNT = 5;
+constexpr uint32_t MEASUREMENT_DURATION_MS =
+    MEASUREMENT_DURATION_SECONDS * 1000UL;
+constexpr size_t MAX_SAMPLE_COUNT =
+    (MEASUREMENT_DURATION_MS + SAMPLE_INTERVAL_MS - 1) / SAMPLE_INTERVAL_MS;
 
-// Arrays to keep track of the running sum and the final average for each sensor
-long totals[NUM_SENSORS]; 
-int averages[NUM_SENSORS];
+Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
+float measurement[MAX_SAMPLE_COUNT][SENSOR_COUNT];
+size_t measurementSampleCount = 0;
+
+enum class AppState {
+  Ready,
+  Measuring,
+  ShowingResult,
+};
+
+AppState appState = AppState::Ready;
+uint32_t stateStartedAt = 0;
+uint32_t lastSampleAt = 0;
+uint32_t lastDisplayedCountdown = 0;
+bool rawButtonState = HIGH;
+bool stableButtonState = HIGH;
+uint32_t buttonStateChangedAt = 0;
+
+void showScreen(const char *line1, const char *line2 = nullptr) {
+  display.clearDisplay();
+  display.setTextSize(1);
+  display.setTextColor(SSD1306_WHITE);
+  display.setCursor(0, 0);
+  display.println(line1);
+  if (line2 != nullptr) {
+    display.println(line2);
+  }
+  display.display();
+}
+
+bool buttonWasPressed() {
+  const bool reading = digitalRead(BUTTON_PIN);
+  const uint32_t now = millis();
+
+  if (reading != rawButtonState) {
+    rawButtonState = reading;
+    buttonStateChangedAt = now;
+  }
+
+  if (now - buttonStateChangedAt >= BUTTON_DEBOUNCE_MS &&
+      stableButtonState != rawButtonState) {
+    stableButtonState = rawButtonState;
+    return stableButtonState == LOW;
+  }
+  return false;
+}
+
+void startMeasurement() {
+  measurementSampleCount = 0;
+  stateStartedAt = millis();
+  lastSampleAt = stateStartedAt - SAMPLE_INTERVAL_MS;
+  lastDisplayedCountdown = MEASUREMENT_DURATION_SECONDS;
+  appState = AppState::Measuring;
+
+  Serial.printf("Measurement started: %lu seconds\n",
+                static_cast<unsigned long>(MEASUREMENT_DURATION_SECONDS));
+  char countdownLine[24];
+  snprintf(countdownLine, sizeof(countdownLine), "Time left: %lu s",
+           static_cast<unsigned long>(MEASUREMENT_DURATION_SECONDS));
+  showScreen("Measuring...", countdownLine);
+}
+
+void captureAndPrintSample() {
+  const float values[SENSOR_COUNT] = {
+      static_cast<float>(analogRead(PIN_VOC)),
+      static_cast<float>(analogRead(PIN_NH3)),
+      static_cast<float>(analogRead(PIN_H2S)),
+      static_cast<float>(analogRead(PIN_ETOH)),
+      static_cast<float>(analogRead(PIN_ODOR)),
+  };
+
+  if (measurementSampleCount < MAX_SAMPLE_COUNT) {
+    for (size_t column = 0; column < SENSOR_COUNT; ++column) {
+      measurement[measurementSampleCount][column] = values[column];
+    }
+    ++measurementSampleCount;
+  }
+
+  // Keep the emitted measurement rows in the same headerless CSV format.
+  for (size_t column = 0; column < SENSOR_COUNT; ++column) {
+    Serial.print(values[column], 0);
+    Serial.print(column + 1 == SENSOR_COUNT ? '\n' : ',');
+  }
+}
+
+const char *classifyMeasurement() {
+  // TODO: Add the trained model's inferencing header and call the model here.
+  // Use `measurement` and `measurementSampleCount` as the captured window,
+  // and return the winning model label (for example result.classification[k].label).
+  (void)measurement;
+  (void)measurementSampleCount;
+  return "LABEL PLACEHOLDER";
+}
+
+void finishMeasurement() {
+  Serial.printf("Measurement finished: %u samples\n",
+                static_cast<unsigned>(measurementSampleCount));
+
+  // TODO: Replace the placeholder function with trained-model inference.
+  const char *label = classifyMeasurement();
+  Serial.printf("Predicted label: %s\n", label);
+
+  showScreen("Measurement done", label);
+  stateStartedAt = millis();
+  appState = AppState::ShowingResult;
+}
+
+void updateMeasurement() {
+  const uint32_t now = millis();
+  const uint32_t elapsed = now - stateStartedAt;
+
+  if (elapsed >= MEASUREMENT_DURATION_MS) {
+    finishMeasurement();
+    return;
+  }
+
+  const uint32_t remainingSeconds =
+      (MEASUREMENT_DURATION_MS - elapsed + 999) / 1000;
+  if (remainingSeconds != lastDisplayedCountdown) {
+    char countdownLine[24];
+    snprintf(countdownLine, sizeof(countdownLine), "Time left: %lu s",
+             static_cast<unsigned long>(remainingSeconds));
+    showScreen("Measuring...", countdownLine);
+    lastDisplayedCountdown = remainingSeconds;
+  }
+
+  if (now - lastSampleAt >= SAMPLE_INTERVAL_MS) {
+    lastSampleAt = now;
+    captureAndPrintSample();
+  }
+}
+
+}  // namespace
 
 void setup() {
   Serial.begin(115200);
-  delay(1000);
   analogReadResolution(12);
-  Serial.println("Starting DFRobot MEMS Gas Sensor Test...");
-  
-  for (int r = 0; r < NUM_SENSORS; r++ ){ //fill filter buffer with first readings
-    totals[r] = 0;
-    for (int c = 0; c < NUM_SAMPLES; c++){
-      readings[r][c] = analogRead(sensorPins[r]);
-      totals[r] += readings[r][c];
+  pinMode(BUTTON_PIN, INPUT_PULLUP);
+  rawButtonState = stableButtonState = digitalRead(BUTTON_PIN);
+  buttonStateChangedAt = millis();
+
+  Wire.begin(OLED_SDA_PIN, OLED_SCL_PIN);
+  if (!display.begin(SSD1306_SWITCHCAPVCC, OLED_ADDRESS)) {
+    Serial.println("SSD1306 initialization failed");
+    while (true) {
+      delay(1000);
     }
   }
-  
-  // Set the analog resolution to 12 bits (0-4095), default for ESP32
+
+  showScreen("Ready for Sniffing!");
+  Serial.println("Ready for Sniffing! Press the button to begin.");
 }
 
 void loop() {
-  // Read the raw ADC values (0 to 4095)
-  // int valVOC  = analogRead(pinVOC);
-  // int valNH3  = analogRead(pinNH3);
-  // int valH2S  = analogRead(pinH2S);
-  // int valEtOH = analogRead(pinEtOH);
-  // int valOdor = analogRead(pinOdor);
+  const bool pressed = buttonWasPressed();
 
-  // Convert raw values to Voltage (assuming 3.3V reference)
-  // float voltVOC  = (valVOC / 4095.0) * 3.3;
-  // float voltNH3  = (valNH3 / 4095.0) * 3.3;
-  // float voltH2S  = (valH2S / 4095.0) * 3.3;
-  // float voltEtOH = (valEtOH / 4095.0) * 3.3;
-  // float voltOdor = (valOdor / 4095.0) * 3.3;
+  switch (appState) {
+    case AppState::Ready:
+      if (pressed) {
+        startMeasurement();
+      }
+      break;
 
-// Loop through all 5 sensors
-  for (int s = 0; s < NUM_SENSORS; s++) {
-    // 1. Subtract the last reading at this position from the total
-    totals[s] = totals[s] - readings[s][readIndex]; 
-    
-    // 2. Read the new raw value from the sensor into the old erased reading index
-    readings[s][readIndex] = analogRead(sensorPins[s]); 
-    
-    // 3. Add the newest reading to the total
-    totals[s] = totals[s] + readings[s][readIndex]; 
-    
-    // 4. Calculate the smoothed average
-    averages[s] = totals[s] / NUM_SAMPLES; 
+    case AppState::Measuring:
+      updateMeasurement();
+      break;
+
+    case AppState::ShowingResult:
+      if (millis() - stateStartedAt >= RESULT_DISPLAY_SECONDS * 1000UL) {
+        appState = AppState::Ready;
+        showScreen("Ready for Sniffing!");
+        Serial.println("Ready for Sniffing!");
+      }
+      break;
   }
 
-  readIndex = (readIndex + 1) % NUM_SAMPLES;
-
-// Loop through all except the last sensor
-  for (int s = 0; s < NUM_SENSORS - 1; s++) {
-    Serial.print(averages[s]); 
-    Serial.print(",");
-  }
-  //last sensor with line break
-  Serial.println(averages[NUM_SENSORS - 1]);
-
-  // Print voltages to the Serial Monitor (formatted for Serial Plotter)
-  // Serial.print("VOC_V:"); Serial.print(voltVOC); Serial.print(", ");
-  //Serial.print("NH3_V:"); Serial.print(voltNH3); Serial.print(", ");
-  //Serial.print("H2S_V:"); Serial.print(voltH2S); Serial.print(", ");
-  //Serial.print("EtOH_V:"); Serial.print(voltEtOH); Serial.print(", ");
-  //Serial.print("Odor_V:"); Serial.println(voltOdor);
-  // Print voltages to the Serial Monitor (formatted for Serial Plotter)
-  // Serial.print(valVOC); Serial.print(","); //VOC
-  // Serial.print(valNH3); Serial.print(","); //NH3
-  // Serial.print(valH2S); Serial.print(","); //H2S
-  // Serial.print(valEtOH); Serial.print(","); //EtOH
-  // Serial.println(valOdor); //Odor
-
-  delay(20); // 50Hz
+  delay(1);
 }
