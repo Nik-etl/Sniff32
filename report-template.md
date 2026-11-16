@@ -26,8 +26,10 @@
 > How you collected it, how many examples per class, and who recorded them.
 > From `data-plan.md`, updated to what you actually did — the plan and the
 > reality are rarely identical, and the difference is worth a sentence.
+### TODO(Niklas)
+Initially we collected 5 recordings of each classs with 15 seconds per class at 50Hz. The data consists of 5 sensor delta values which are the difference between a baseline air (5 second recording before object in vicinity), and the peak gas levels of introduced substance. For example: The device is plugged into power and left running until sensor levels drop to a consistent level. 
 
-### Collection
+### Collection TODO(Niklas)
 For collecting the data we used modified code from lecture 2 materials, where we collected the gesture tinyML datasets. Filtering was added for the data-stream program that runs on the ESP32 while recording is done with a laptop using a Python program. Recording program runs a realtime graph of the data-stream to inspect data readings during and between measurements. Baseline readings are recorded before measuring organic samples. Delta of these 2 are used as the dataset with 5 samples to train per class. Recordings and final version of the recording program were made by Niklas. AI was used in the programming tasks.
 
 ### Collection set-up
