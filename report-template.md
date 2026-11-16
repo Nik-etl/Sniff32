@@ -19,7 +19,7 @@
 > One short paragraph: sensor → model → action. A diagram or the pipeline in
 > one line is fine. Say what the board is doing, not how Edge Impulse works.
 
-> ESP32 streams gas-sensor array's analog readings → model detects from these the gasses → after detection the identified class is displayed.
+ESP32 streams gas-sensor array's analog readings → model detects from these the gasses → after detection the identified class is displayed.
 
 ## Data
 
@@ -31,11 +31,11 @@
 For collecting the data we used modified code from lecture 2 materials, where we collected the gesture tinyML datasets. Filtering was added for the data-stream program that runs on the ESP32 while recording is done with a laptop using a Python program. Recording program runs a realtime graph of the data-stream to inspect data readings during and between measurements. Baseline readings are recorded before measuring organic samples. Delta of these 2 are used as the dataset with 5 samples to train per class. Recordings and final version of the recording program were made by Niklas. AI was used in the programming tasks.
 
 ### Collection set-up
-> 1. Capture the average clean air reading for 5 seconds to establish the `baseline_air` value for the delta calculation.
-> 2. Place funnel, inverted cup with the bottom cut off, over the gas-emitting item and the sensor array on the top where the bottom was cut off.
-> 3. Wait for the gases to build up in the enclosure and allow the sensors to reach a stable peak readings.
-> 4. Use a Python script to record 15 seconds of the plateaued peak readings into a CSV file.
-> 5. Remove the funnel cup, fan the sensors back to baseline, and repeat.
+1. Capture the average clean air reading for 5 seconds to establish the `baseline_air` value for the delta calculation.
+2. Place funnel, inverted cup with the bottom cut off, over the gas-emitting item and the sensor array on the top where the bottom was cut off.
+3. Wait for the gases to build up in the enclosure and allow the sensors to reach a stable peak readings.
+4. Use a Python script to record 15 seconds of the plateaued peak readings into a CSV file.
+5. Remove the funnel cup, fan the sensors back to baseline, and repeat.
 
 ### Classes
 *   **Baseline - Pure classroom air (ambient environment)** 
