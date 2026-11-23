@@ -50,6 +50,9 @@ Our plan moved to using the raw readings from sensors, not converted to accurate
 
 ## Results — honestly
 
+Even with high accuracy in the confusion matrix, our model stubles on the sensors not getting back to baseline fast enough.
+
+![confusion matrix](confusion_matrix.png)
 > Your confusion matrix, and the accuracy you actually get. Then the important
 > part: **what does it get wrong, and why?** A model with a known weakness you
 > can explain scores better here than a suspiciously perfect one.
@@ -63,7 +66,7 @@ Our plan moved to using the raw readings from sensors, not converted to accurate
 
 ## What was hard, and what you'd do next
 
-We had to burn the sensors again twice, first time because we did not notice tiny films on top of gas champers, sencond time because the sensor readings didn't get back to ambient levels after measurements. 
+At the start sensors need 24-48 hours to be burned. We had to burn the sensors again after the first because we did not notice tiny films on top of gas champers. Burning was done multiple times because the sensor readings didn't get back to ambient levels after measurements. This meant data collection was slow and inconsistent. With more time we would reconsider which sensors to use and how to create stable data-collection environment. With more time to collect data more accurate model is possible to make. 
 
 > 3–4 sentences. The honest part. What fought you, what you'd change with
 > another week, what you'd do differently from the start.
