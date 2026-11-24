@@ -61,21 +61,21 @@ ei_dsp_config_flatten_t ei_dsp_config_1161831_2 = {
     false, // boolean maximum
     false, // boolean rms
     true, // boolean stdev
-    true, // boolean skewness
+    false, // boolean skewness
     false, // boolean kurtosis
     0 // int moving_avg_num_windows
 };
 
-const float ei_dn_standard_scaler_mean_1161831_2[15] = { 1071.8532008212233, 3.1930935726077196, -0.15943692238127738, 1175.0309066922164, 6.246150538832779, 0.10954834622022445, 665.7814907626287, 3.4692527923052525, -0.2875886299033237, 403.88836056464595, 3.316412756502075, 0.19464114880270034, 711.7627766063904, 3.994533580523157, 0.08710562897090665 };
-const float ei_dn_standard_scaler_scale_1161831_2[15] = { 0.0009586529253076045, 0.6844081549916858, 1.9449927303646866, 0.0007202160024179735, 0.10909254718735507, 1.3626444457112177, 0.0012628195261135259, 0.6947089555938958, 1.9530727936429388, 0.0019803913416093825, 0.13630804403596758, 1.0194602422652226, 0.0011524008242314457, 0.40101809122681253, 2.0957098794326945 };
-const float ei_dn_standard_scaler_var_1161831_2[15] = { 1088121.0108663295, 2.1348612216558425, 0.2643406996372787, 1927855.4459519456, 84.02525433187299, 0.538560998332728, 627072.0201498561, 2.0720212499465855, 0.26215801459916943, 254975.21237820905, 53.82165253976098, 0.9621868408005041, 752996.3647247711, 6.218305704243937, 0.22768670834537102 };
+const float ei_dn_standard_scaler_mean_1161831_2[10] = { 1093.2991018034234, 3.837176180067863, 1084.7695494095105, 11.561198869506821, 644.1675933511885, 4.592904366154707, 353.11044588404536, 6.500622599975753, 633.2604232072646, 5.303443540143602 };
+const float ei_dn_standard_scaler_scale_1161831_2[10] = { 0.0010344128695741475, 0.4065332989707896, 0.0007847448359250358, 0.06422513567891219, 0.0013558986309595853, 0.2555804274494013, 0.0021787825492617366, 0.06218657720548942, 0.0012328660366214912, 0.16000930411597852 };
+const float ei_dn_standard_scaler_var_1161831_2[10] = { 934570.7182745653, 6.050729686590599, 1623839.3714366555, 242.43199713475502, 543933.184875935, 15.308929240737424, 210655.21917871214, 258.5870030447146, 657912.628492622, 39.05795737085947 };
 ei_data_normalization_standard_scaler_config_t ei_data_normalization_standard_scaler_config_1161831_2 = {
     .mean_data = (float *)ei_dn_standard_scaler_mean_1161831_2,
-    .mean_data_len = 15,
+    .mean_data_len = 10,
     .scale_data = (float *)ei_dn_standard_scaler_scale_1161831_2,
-    .scale_data_len = 15,
+    .scale_data_len = 10,
     .var_data = (float *)ei_dn_standard_scaler_var_1161831_2,
-    .var_data_len = 15
+    .var_data_len = 10
 };
 ei_data_normalization_t ei_data_normalization_config_1161831_2 = {
     (void *) &ei_data_normalization_standard_scaler_config_1161831_2, // config
@@ -90,7 +90,7 @@ const uint8_t ei_dsp_blocks_1161831_1_size = 1;
 ei_model_dsp_t ei_dsp_blocks_1161831_1[ei_dsp_blocks_1161831_1_size] = {
     { // DSP block 2
         2,
-        15, // output size
+        10, // output size
         &extract_flatten_features, // DSP function pointer
         (void*)&ei_dsp_config_1161831_2, // pointer to config struct
         ei_dsp_config_1161831_2_axes, // array of offsets into the input stream, one for each axis
@@ -166,12 +166,12 @@ const ei_impulse_t impulse_1161831_1 = {
     .project_name = "sniff32",
     .impulse_id = 1,
     .impulse_name = "Impulse #1",
-    .deploy_version = 1,
+    .deploy_version = 2,
 
-    .nn_input_frame_size = 15,
-    .raw_sample_count = 100,
+    .nn_input_frame_size = 10,
+    .raw_sample_count = 250,
     .raw_samples_per_frame = 5,
-    .dsp_input_frame_size = 100 * 5,
+    .dsp_input_frame_size = 250 * 5,
     .input_width = 0,
     .input_height = 0,
     .input_frames = 0,
@@ -193,7 +193,7 @@ const ei_impulse_t impulse_1161831_1 = {
 
     .sensor = EI_CLASSIFIER_SENSOR_FUSION,
     .fusion_string = "VOC + NH3 + H2S + EtOH + Odor",
-    .slice_size = (100/4),
+    .slice_size = (250/4),
     .slices_per_model_window = 4,
 
     .has_anomaly = EI_ANOMALY_TYPE_UNKNOWN,
