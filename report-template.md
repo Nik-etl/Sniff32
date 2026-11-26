@@ -5,7 +5,6 @@
 > **Two pages maximum.** I read the first two pages; anything after that I don't.
 > Writing short is harder than writing long — that's the point. Delete these
 > quote blocks as you go.
->
 > Most of this you have already written during the course. Copy it in:
 > the platform sentence from your `README`, `threat-model.md`, `data-plan.md`,
 > your confusion matrix screenshot, and `ceiling.md` if it's relevant.
@@ -43,7 +42,7 @@ For collecting the data we used modified code from lecture 2 materials, where we
 *   **Baseline - Pure classroom air (ambient environment)** 
 *   **Class 1 - Ground coffee**
 *   **Class 2 - Banana fruit**
-*   **Class 3 - Hand Sanitizer (Alcohol/Solvent)**
+
 
 ### From plan to reality
 Our plan moved to using the raw readings from sensors, not converted to accurate voltage changes. Getting the baseline back after data recordings turned out to be slower and harder than expected. 
@@ -66,7 +65,7 @@ Even with high accuracy in the confusion matrix, our model stubles on the sensor
 
 ## What was hard, and what you'd do next
 
-At the start sensors need 24-48 hours to be burned. We had to burn the sensors again after the first because we did not notice tiny films on top of gas champers. Burning was done multiple times because the sensor readings didn't get back to ambient levels after measurements. This meant data collection was slow and inconsistent. With more time we would reconsider which sensors to use and how to create stable data-collection environment. With more time to collect data more accurate model is possible to make. 
+At the start sensors need 24-48 hours to be burned. We had to burn the sensors again after the first because we did not notice tiny films on top of gas champers. Burning was done multiple times because the sensor readings didn't get back to ambient levels after measurements. This meant data collection was slow and inconsistent. With more time we would reconsider which sensors to use and how to create stable data-collection environment. With more time to collect data more accurate model is possible to make. Getting the ESP32 to send data wirelessly would make collecting and sampling easier. 
 
 > 3–4 sentences. The honest part. What fought you, what you'd change with
 > another week, what you'd do differently from the start.
