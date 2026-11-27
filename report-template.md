@@ -25,11 +25,11 @@ ESP32 streams gas-sensor array's analog readings → model detects from these th
 > How you collected it, how many examples per class, and who recorded them.
 > From `data-plan.md`, updated to what you actually did — the plan and the
 > reality are rarely identical, and the difference is worth a sentence.
-### TODO(Niklas)
-Initially we collected 5 recordings of each classs with 15 seconds per class at 50Hz. The data consists of 5 sensor delta values which are the difference between a baseline air (5 second recording before object in vicinity), and the peak gas levels of introduced substance. For example: The device is plugged into power and left running until sensor levels drop to a consistent level. 
 
-### Collection TODO(Niklas)
-For collecting the data we used modified code from lecture 2 materials, where we collected the gesture tinyML datasets. Filtering was added for the data-stream program that runs on the ESP32 while recording is done with a laptop using a Python program. Recording program runs a realtime graph of the data-stream to inspect data readings during and between measurements. Baseline readings are recorded before measuring organic samples. Delta of these 2 are used as the dataset with 5 samples to train per class. Recordings and final version of the recording program were made by Niklas. AI was used in the programming tasks.
+Initially we collected 5 recordings of each classs with 15 seconds per class at 50Hz. But to increase model robustness, we collected 5 more samples to bring the total to ten, also replacing bad samples with new better collected samples. The data consists of 5 sensor delta values which are the difference between a baseline air (5 second recording before object in vicinity), and the peak gas levels of introduced substance. For example: The device is plugged into power and left running until sensor levels drop to a consistent level. 
+
+### Collection
+For collecting the data we used modified code from lecture 2 materials, where we collected the gesture tinyML datasets. Filtering was added for the data-stream program that runs on the ESP32 while recording is done with a laptop using a Python program. Recording program runs a realtime graph of the data-stream to inspect data readings during and between measurements. Baseline readings are recorded before measuring organic samples. Delta of these 2 are used as the dataset with 10 samples to train per class. Recordings and final version of the recording program were made by Niklas. AI was used in the programming tasks.
 
 ### Collection set-up
 1. Capture the average clean air reading for 5 seconds to establish the `baseline_air` value for the delta calculation.
@@ -52,9 +52,8 @@ Our plan moved to using the raw readings from sensors, not converted to accurate
 Even with high accuracy in the confusion matrix, our model stubles on the sensors not getting back to baseline fast enough.
 
 ![confusion matrix](confusion_matrix.png)
-> Your confusion matrix, and the accuracy you actually get. Then the important
-> part: **what does it get wrong, and why?** A model with a known weakness you
-> can explain scores better here than a suspiciously perfect one.
+
+The matrix shows 100% accuracy on the test data but this does not accurately reflect the model in application because the training and test data were recorded in similar fashion but when applied, many more variables are introduced. For example in the case of decaying substances, we did not prepare the model to be able to accurately classify weak signatures like from stale coffee. We experienced this when we tried to test the model against a stale coffee sample that was left out for a day, and would no longer produce high sensor values.
 
 ## The two sentences
 
